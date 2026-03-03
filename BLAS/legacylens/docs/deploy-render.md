@@ -21,7 +21,7 @@
 2. Connect your repo
 3. **Root Directory:** `legacylens` (if it's a subfolder)
 4. **Build Command:** `pip install -r requirements.txt`
-5. **Start Command:** `uvicorn api:app --host 0.0.0.0 --port $PORT`
+5. **Start Command:** `./start.sh` (or `sh -c 'uvicorn api:app --host 0.0.0.0 --port $PORT'`)
 6. **Environment:** Add `VOYAGE_API_KEY`, `ANTHROPIC_API_KEY`
 
 ## Before First Deploy
