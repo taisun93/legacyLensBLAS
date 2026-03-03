@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LegacyLens</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d1117;
+      color: #7ee787;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .term { max-width: 900px; margin: 0 auto; }
+    .header { color: #58a6ff; margin-bottom: 1rem; }
+    .output {
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-bottom: 1rem;
+      min-height: 200px;
+    }
+    .output .dim { color: #8b949e; }
+    .output .answer { color: #79c0ff; margin: 1rem 0; }
+    .output .err { color: #f85149; }
+    .prompt {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .prompt span { color: #7ee787; }
+    input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #7ee787;
+      font: inherit;
+      outline: none;
+    }
+    input::placeholder { color: #484f58; }
+  </style>
+</head>
+<body>
+  <div class="term">
+    <div class="header">LegacyLens — Query BLAS in natural language. Type and press Enter.</div>
+    <div id="output" class="output"></div>
+    <div class="prompt">
+      <span>Query></span>
+      <input type="text" id="input" placeholder=" e.g. find double precision matrix multiply" autofocus>
+    </div>
+  </div>
+  <script>
+    const output = document.getElementById('output');
+    const input = document.getElementById('input');
+
+    function append(txt, cls = '') {
+      const div = document.createElement('div');
+      if (cls) div.className = cls;
+      div.textContent = txt;
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function formatResults(results) {
+      let s = '\n--- Top Results ---\n';
+      results.forEach((r, i) => {
+        const m = r.metadata || {};
+        const score = (r.similarity || 0).toFixed(2);
+        s += `\n[${i + 1}] ${score} ${m.file_name || '?'} ${m.start_line || '?'}-${m.end_line || '?'} | ${m.routine_name || '-'} (${m.precision || '-'})\n`;
+        const text = (r.text || '').slice(0, 600);
+        s += text + (r.text?.length > 600 ? '...' : '') + '\n';
+      });
+      return s;
+    }
+
+    async function runQuery(q) {
+      append(`\nQuery> ${q}`, 'dim');
+      try {
+        const res = await fetch('/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q, k: 5 })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          const d = err.detail;
+          const msg = Array.isArray(d) ? d[0]?.msg : (d?.msg || d);
+          throw new Error(msg || res.statusText);
+        }
+        const data = await res.json();
+        append(formatResults(data.results));
+        append('\n--- Answer ---\n', 'dim');
+        append(data.answer, 'answer');
+        append(`\n[${data.latency.total.toFixed(2)}s]`, 'dim');
+      } catch (e) {
+        append('Error: ' + e.message, 'err');
+      }
+      append('');
+    }
+
+    input.addEventListener('keydown', async (e) => {
+      if (e.key !== 'Enter') return;
+      const q = input.value.trim();
+      input.value = '';
+      if (!q) return;
+      if (q.toLowerCase() === 'quit' || q.toLowerCase() === 'exit' || q === 'q') {
+        append('\nBye.\n');
+        input.disabled = true;
+        return;
+      }
+      await runQuery(q);
+    });
+  </script>
+</body>
+</html>
