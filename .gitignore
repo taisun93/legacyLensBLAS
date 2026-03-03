@@ -1,0 +1,7 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Ghostfolio (separate project, not part of this repo)
+Ghostfolio/
