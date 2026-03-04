@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MODEL = "claude-haiku-4-5"  # Fastest model for low latency
-MAX_TOKENS = 200
+MAX_TOKENS = 128
 
 _client: Optional[Anthropic] = None
 
@@ -25,14 +25,8 @@ def _get_client() -> Anthropic:
         _client = Anthropic(api_key=api_key)
     return _client
 
-# Base system prompt for BLAS expert behavior
-BASE_SYSTEM = """You are a Fortran and BLAS expert. Answer questions about the BLAS (Basic Linear Algebra Subprograms) codebase using the provided code context.
-
-Rules:
-- Be concise. Aim for 2-4 sentences unless the question clearly needs more detail.
-- Always cite file path and line numbers when referring to code.
-- Explain BLAS naming conventions (precision prefix: S/D/C/Z, operation type: GEMM, DOT, etc.) when relevant.
-- If the provided context does not contain relevant information for the question, explicitly say "not found" or "no relevant routine found" rather than guessing or hallucinating."""
+# Base system prompt for BLAS expert behavior (kept short for latency)
+BASE_SYSTEM = """Fortran/BLAS expert. Answer from the code context only. Be concise (2-4 sentences). Cite file and line numbers. Mention BLAS naming (S/D/C/Z, GEMM, DOT, etc.) when relevant. If context doesn't answer the question, say "not found"."""
 
 # Feature-specific system prompt overrides
 FEATURE_PROMPTS = {
@@ -102,11 +96,11 @@ def generate_answer(
     context = _build_context(chunks)
     user_content = f"""Question: {query}
 
-Relevant BLAS code context:
+Context:
 
 {context}
 
-Answer briefly using the context above. Cite file names and line numbers. Be concise."""
+Answer (cite file:lines)."""
 
     client = _get_client()
     response = client.messages.create(
