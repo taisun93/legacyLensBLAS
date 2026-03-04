@@ -10,8 +10,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MODEL = "claude-sonnet-4-20250514"
-MAX_TOKENS = 500
+MODEL = "claude-haiku-4-5"  # Fastest model for low latency
+MAX_TOKENS = 200
 
 _client: Optional[Anthropic] = None
 
