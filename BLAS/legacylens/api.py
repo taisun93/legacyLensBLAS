@@ -68,3 +68,10 @@ def serve_ui():
 def health():
     """Health check."""
     return {"status": "ok"}
+
+
+@app.get("/warmup")
+def warmup():
+    """Pre-load ChromaDB collection so first query doesn't pay cold-start cost."""
+    get_collection()
+    return {"status": "ready"}

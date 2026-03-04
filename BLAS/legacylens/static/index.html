@@ -8,76 +8,231 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: #0d1117;
-      color: #7ee787;
+      color: #c9d1d9;
       font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
       font-size: 14px;
       line-height: 1.5;
       min-height: 100vh;
-      padding: 1rem;
+      padding: 1.5rem;
     }
-    .term { max-width: 900px; margin: 0 auto; }
-    .header { color: #58a6ff; margin-bottom: 1rem; }
-    .output {
-      white-space: pre-wrap;
-      word-break: break-all;
-      margin-bottom: 1rem;
-      min-height: 200px;
-    }
-    .output .dim { color: #8b949e; }
-    .output .answer { color: #79c0ff; margin: 1rem 0; }
-    .output .err { color: #f85149; }
-    .prompt {
+    .container { max-width: 900px; margin: 0 auto; }
+    .input-row {
       display: flex;
-      align-items: center;
       gap: 0.5rem;
+      margin-bottom: 1.5rem;
     }
-    .prompt span { color: #7ee787; }
-    input {
+    .input-wrap {
       flex: 1;
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+    }
+    .input-wrap input {
+      width: 100%;
       background: transparent;
       border: none;
-      color: #7ee787;
+      color: #c9d1d9;
       font: inherit;
       outline: none;
     }
-    input::placeholder { color: #484f58; }
+    .input-wrap input::placeholder { color: #8b949e; }
+    .btn-submit {
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      font: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-submit:hover { background: #2ea043; }
+    .btn-submit:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+    .recommended {
+      margin-bottom: 1.5rem;
+    }
+    .recommended-title { font-size: 12px; color: #8b949e; margin-bottom: 0.5rem; }
+    .recommended-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .rec-query {
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 0.4rem 0.75rem;
+      font-size: 13px;
+      color: #58a6ff;
+      cursor: pointer;
+    }
+    .rec-query:hover { background: #30363d; border-color: #58a6ff; }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+    .card-label.query { color: #a371f7; }
+    .card-label.answer { color: #7ee787; }
+    .card-label.sources { color: #7ee787; }
+    .query-text { color: #c9d1d9; }
+    .answer-text {
+      color: #79c0ff;
+      white-space: pre-wrap;
+      margin-bottom: 0.75rem;
+    }
+    .answer-refs {
+      font-size: 12px;
+      color: #8b949e;
+      margin-top: 0.5rem;
+    }
+    .answer-refs a { color: #58a6ff; text-decoration: none; }
+    .answer-refs a:hover { text-decoration: underline; }
+    .source-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #21262d;
+    }
+    .source-item:last-child { border-bottom: none; }
+    .source-rank { color: #8b949e; min-width: 1.5rem; }
+    .source-path {
+      flex: 1;
+      color: #c9d1d9;
+      font-size: 13px;
+    }
+    .source-path .lines { color: #8b949e; }
+    .source-path .type { color: #6e7681; font-size: 11px; }
+    .status-bar {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #30363d;
+      font-size: 12px;
+      color: #8b949e;
+    }
+    .status-bar.fast { color: #3fb950; }
+    .status-bar.slow { color: #d29922; }
+    .err { color: #f85149; }
+    .empty-state { color: #8b949e; text-align: center; padding: 3rem 1rem; }
   </style>
 </head>
 <body>
-  <div class="term">
-    <div class="header">LegacyLens — Query BLAS in natural language. Type and press Enter.</div>
-    <div id="output" class="output"></div>
-    <div class="prompt">
-      <span>Query></span>
-      <input type="text" id="input" placeholder=" e.g. find double precision matrix multiply" autofocus>
+  <div class="container">
+    <div class="input-row">
+      <div class="input-wrap">
+        <input type="text" id="input" placeholder="Type a number, a question, or /help" autofocus>
+      </div>
+      <button type="button" class="btn-submit" id="submitBtn">Search</button>
+    </div>
+    <div class="recommended" id="recommended">
+      <div class="recommended-title">Recommended queries</div>
+      <div class="recommended-list" id="recList"></div>
+    </div>
+    <div id="content">
+      <div class="empty-state">Ask a question about the BLAS codebase.</div>
     </div>
   </div>
   <script>
-    const output = document.getElementById('output');
+    const content = document.getElementById('content');
     const input = document.getElementById('input');
+    const submitBtn = document.getElementById('submitBtn');
+    const recList = document.getElementById('recList');
 
-    function append(txt, cls = '') {
-      const div = document.createElement('div');
-      if (cls) div.className = cls;
-      div.textContent = txt;
-      output.appendChild(div);
-      output.scrollTop = output.scrollHeight;
+    const RECOMMENDED_QUERIES = [
+      'What does DGEMM do?',
+      'Find routines that modify the input vector',
+      'What are the dependencies of DGEMM?',
+      'Explain what SROTM does',
+      'Show me error handling patterns',
+      'What routines compute dot products?',
+    ];
+
+    function renderRecommended() {
+      recList.innerHTML = RECOMMENDED_QUERIES.map(q =>
+        `<button type="button" class="rec-query" data-query="${escapeHtml(q)}">${escapeHtml(q)}</button>`
+      ).join('');
+      recList.querySelectorAll('.rec-query').forEach(btn => {
+        btn.addEventListener('click', () => doSubmit(btn.dataset.query));
+      });
     }
 
-    function formatResults(results) {
-      let s = '\n--- Top Results ---\n';
-      results.forEach((r, i) => {
+    async function warmup() {
+      try { await fetch('/warmup'); } catch (_) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      warmup();
+      renderRecommended();
+    });
+
+    function sourceType(meta) {
+      const routine = meta?.routine_name || '';
+      const prec = meta?.precision || '';
+      if (routine && prec) return `${prec} ${meta?.operation_type || ''}`.trim() || 'routine';
+      return meta?.chunk_type || 'chunk';
+    }
+
+    function renderResult(data, query) {
+      const { results, answer, latency } = data;
+      const totalMs = latency?.total_ms ?? 0;
+      const isFast = totalMs < 3000;
+
+      const refs = (results || [])
+        .slice(0, 3)
+        .map(r => {
+          const m = r.metadata || {};
+          const path = m.file_name || m.file_path || '?';
+          const lines = `${m.start_line || '?'}-${m.end_line || '?'}`;
+          return `${path}:${lines}`;
+        })
+        .join('\n');
+
+      let sourcesHtml = (results || []).map((r, i) => {
         const m = r.metadata || {};
-        const score = (r.similarity || 0).toFixed(2);
-        s += `\n[${i + 1}] ${score} ${m.file_name || '?'} ${m.start_line || '?'}-${m.end_line || '?'} | ${m.routine_name || '-'} (${m.precision || '-'})\n`;
-        const text = (r.text || '').slice(0, 600);
-        s += text + (r.text?.length > 600 ? '...' : '') + '\n';
-      });
-      return s;
+        const path = m.file_name || m.file_path || '?';
+        const lines = `${m.start_line || '?'}-${m.end_line || '?'}`;
+        const type = sourceType(m);
+        return `
+          <div class="source-item">
+            <span class="source-rank">${i + 1}.</span>
+            <span class="source-path">${path} <span class="lines">:${lines}</span> <span class="type">(${type})</span></span>
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="card">
+          <div class="card-label query">Query</div>
+          <div class="query-text">${escapeHtml(query || '—')}</div>
+        </div>
+        <div class="card">
+          <div class="card-label answer">Answer</div>
+          <div class="answer-text">${escapeHtml(answer || 'No answer.')}</div>
+          ${refs ? `<div class="answer-refs">${refs.split('\n').map(p => escapeHtml(p)).join('<br>')}</div>` : ''}
+        </div>
+        <div class="card">
+          <div class="card-label sources">Sources</div>
+          ${sourcesHtml || '<div class="empty-state">No sources</div>'}
+        </div>
+        <div class="status-bar ${isFast ? 'fast' : 'slow'}">
+          Response time: ${Math.round(totalMs)}ms ${isFast ? '(fast)' : ''}
+        </div>`;
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
     }
 
     async function runQuery(q) {
-      append(`\nQuery> ${q}`, 'dim');
+      content.innerHTML = '<div class="empty-state">Searching…</div>';
       try {
         const res = await fetch('/query', {
           method: 'POST',
@@ -91,28 +246,38 @@
           throw new Error(msg || res.statusText);
         }
         const data = await res.json();
-        append(formatResults(data.results));
-        append('\n--- Answer ---\n', 'dim');
-        append(data.answer, 'answer');
-        append(`\n[${data.timing_breakdown || '—'}]`, 'dim');
+        content.innerHTML = renderResult(data, q);
       } catch (e) {
-        append('Error: ' + e.message, 'err');
+        content.innerHTML = `<div class="card"><div class="card-label answer">Error</div><div class="err">${escapeHtml(e.message)}</div></div>`;
       }
-      append('');
     }
 
-    input.addEventListener('keydown', async (e) => {
-      if (e.key !== 'Enter') return;
-      const q = input.value.trim();
-      input.value = '';
+    function doSubmit(prefilled) {
+      const q = (prefilled || input.value.trim());
       if (!q) return;
-      if (q.toLowerCase() === 'quit' || q.toLowerCase() === 'exit' || q === 'q') {
-        append('\nBye.\n');
-        input.disabled = true;
+      if (!prefilled) input.value = '';
+      if (q === '/help') {
+        content.innerHTML = `
+          <div class="card">
+            <div class="card-label query">Help</div>
+            <div class="query-text">Type a natural language question about the BLAS codebase. Examples:
+• What does DGEMM do?
+• Find routines that modify the input vector
+• What are the dependencies of DGEMM?</div>
+          </div>`;
         return;
       }
-      await runQuery(q);
+      if (/^\d+$/.test(q)) {
+        content.innerHTML = '<div class="empty-state">Result drill-down by number not yet implemented.</div>';
+        return;
+      }
+      runQuery(q);
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doSubmit();
     });
+    submitBtn.addEventListener('click', doSubmit);
   </script>
 </body>
 </html>
