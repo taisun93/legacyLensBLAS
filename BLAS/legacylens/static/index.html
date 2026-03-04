@@ -119,6 +119,7 @@
     }
     .status-bar.fast { color: #3fb950; }
     .status-bar.slow { color: #d29922; }
+    .status-breakdown { font-size: 11px; color: #6e7681; margin-top: 0.25rem; }
     .err { color: #f85149; }
     .empty-state { color: #8b949e; text-align: center; padding: 3rem 1rem; }
   </style>
@@ -180,9 +181,10 @@
     }
 
     function renderResult(data, query) {
-      const { results, answer, latency } = data;
+      const { results, answer, latency, timing_breakdown } = data;
       const totalMs = latency?.total_ms ?? 0;
       const isFast = totalMs < 3000;
+      const breakdown = timing_breakdown || '';
 
       const refs = (results || [])
         .slice(0, 3)
@@ -221,7 +223,8 @@
           ${sourcesHtml || '<div class="empty-state">No sources</div>'}
         </div>
         <div class="status-bar ${isFast ? 'fast' : 'slow'}">
-          Response time: ${Math.round(totalMs)}ms ${isFast ? '(fast)' : ''}
+          <div>Response time: ${Math.round(totalMs)}ms ${isFast ? '(fast)' : ''}</div>
+          ${breakdown ? `<div class="status-breakdown">${escapeHtml(breakdown)}</div>` : ''}
         </div>`;
     }
 
