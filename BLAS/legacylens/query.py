@@ -4,7 +4,6 @@ LegacyLens CLI — query BLAS codebase in natural language.
 
 import argparse
 import sys
-import time
 from pathlib import Path
 
 from rich.console import Console
@@ -13,8 +12,8 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
 
-from retriever import search, get_full_file, get_collection
-from generator import generate_answer
+from retriever import get_full_file, get_collection
+from query_pipeline import run_query, format_timing
 
 console = Console()
 
@@ -35,11 +34,9 @@ def _format_snippet(code: str) -> Syntax:
     return Syntax(truncated, "fortran", theme="monokai", line_numbers=False)
 
 
-def run_query(query: str, k: int = 5, feature: str | None = None) -> list[dict]:
+def run_query_cli(query: str, k: int = 5, feature: str | None = None) -> list[dict]:
     """Execute search and generation, return results + answer."""
-    start = time.perf_counter()
-    results = search(query, k=k)
-    elapsed = time.perf_counter() - start
+    results, answer, timing = run_query(query, k=k, feature=feature)
 
     # Display results
     table = Table(title="Top Results", show_header=True, header_style="bold cyan")
@@ -75,14 +72,8 @@ def run_query(query: str, k: int = 5, feature: str | None = None) -> list[dict]:
             header += f" — {meta['routine_name']}"
         console.print(Panel(_format_snippet(r.get("text", "")), title=header, border_style=score_color))
 
-    # Generate answer
-    gen_start = time.perf_counter()
-    answer = generate_answer(query, results, feature)
-    gen_elapsed = time.perf_counter() - gen_start
-
     console.print(Panel(answer, title="Answer", border_style="blue"))
-    total_elapsed = time.perf_counter() - start
-    console.print(f"\n[dim]Query latency: {total_elapsed:.2f}s (search: {elapsed:.2f}s, generate: {gen_elapsed:.2f}s)[/dim]")
+    console.print(f"\n[dim]Timing: {format_timing(timing)}[/dim]")
 
     return results
 
@@ -106,7 +97,7 @@ def main():
 
     if args.query:
         # Single query mode
-        run_query(args.query, k=args.top_k, feature=args.feature)
+        run_query_cli(args.query, k=args.top_k, feature=args.feature)
         return
 
     # Interactive mode
@@ -121,7 +112,7 @@ def main():
         if query.lower() in ("quit", "exit", "q"):
             break
 
-        results = run_query(query, k=args.top_k, feature=args.feature)
+        results = run_query_cli(query, k=args.top_k, feature=args.feature)
 
         # Drill-down prompt
         if results:

@@ -3,6 +3,8 @@ Voyage Code 2 embedding wrapper.
 Use input_type='document' for chunks, input_type='query' for search queries.
 """
 
+from __future__ import annotations
+
 import os
 import time
 
@@ -15,11 +17,17 @@ MODEL = "voyage-code-2"
 BATCH_SIZE = 128
 
 
+_client: "voyageai.Client | None" = None
+
+
 def _get_client() -> voyageai.Client:
-    api_key = os.getenv("VOYAGE_API_KEY")
-    if not api_key:
-        raise ValueError("VOYAGE_API_KEY not set in .env")
-    return voyageai.Client(api_key=api_key)
+    global _client
+    if _client is None:
+        api_key = os.getenv("VOYAGE_API_KEY")
+        if not api_key:
+            raise ValueError("VOYAGE_API_KEY not set in .env")
+        _client = voyageai.Client(api_key=api_key)
+    return _client
 
 
 def embed_chunks(texts: list[str], batch_size: int = BATCH_SIZE) -> list[list[float]]:

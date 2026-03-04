@@ -17,30 +17,38 @@ load_dotenv()
 COLLECTION_NAME = "blas_code"
 CHROMA_PATH = Path(__file__).resolve().parent / "chroma_db"
 
+_client = None
+_collection_cache = None
+
 
 def _chroma_client():
-    return chromadb.PersistentClient(
-        path=str(CHROMA_PATH),
-        settings=Settings(anonymized_telemetry=False),
-    )
+    global _client
+    if _client is None:
+        _client = chromadb.PersistentClient(
+            path=str(CHROMA_PATH),
+            settings=Settings(anonymized_telemetry=False),
+        )
+    return _client
 
 
 def get_collection(reset: bool = False):
     """
-    Create or load the ChromaDB collection.
+    Create or load the ChromaDB collection. Cached after first load.
     Uses cosine similarity for retrieval.
     """
-    client = _chroma_client()
+    global _collection_cache
     if reset:
+        _collection_cache = None
         try:
-            client.delete_collection(COLLECTION_NAME)
+            _chroma_client().delete_collection(COLLECTION_NAME)
         except Exception:
             pass
-    return client.get_or_create_collection(
-        name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},
-        # Alternative for ChromaDB 1.x: configuration={"hnsw": {"space": "cosine"}}
-    )
+    if _collection_cache is None:
+        _collection_cache = _chroma_client().get_or_create_collection(
+            name=COLLECTION_NAME,
+            metadata={"hnsw:space": "cosine"},
+        )
+    return _collection_cache
 
 
 def add_chunks(
@@ -79,6 +87,38 @@ def add_chunks(
     )
 
 
+def search_with_embedding(
+    query_embedding: list[float],
+    k: int = 5,
+    filters: Optional[dict] = None,
+    collection=None,
+) -> list[dict[str, Any]]:
+    """
+    Search collection with pre-computed embedding. No API calls.
+    """
+    if collection is None:
+        collection = get_collection()
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=k,
+        where=filters,
+        include=["documents", "metadatas", "distances"],
+    )
+    formatted = []
+    if results["ids"] and results["ids"][0]:
+        for doc_id, doc, meta, dist in zip(
+            results["ids"][0],
+            results["documents"][0],
+            results["metadatas"][0],
+            results["distances"][0],
+        ):
+            similarity = max(0.0, 1.0 - dist)
+            formatted.append(
+                {"id": doc_id, "text": doc, "metadata": meta, "similarity": similarity}
+            )
+    return formatted
+
+
 def search(
     query: str,
     k: int = 5,
@@ -88,38 +128,9 @@ def search(
     """
     Embed query, search collection, return formatted results.
     Converts cosine distance to 0-1 similarity (higher = more similar).
-    ChromaDB returns distance; for cosine, similarity = 1 - distance.
     """
-    if collection is None:
-        collection = get_collection()
     query_embedding = embed_query(query)
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=k,
-        where=filters,
-        include=["documents", "metadatas", "distances"],
-    )
-    formatted = []
-    if results["ids"] and results["ids"][0]:
-        for i, (doc_id, doc, meta, dist) in enumerate(
-            zip(
-                results["ids"][0],
-                results["documents"][0],
-                results["metadatas"][0],
-                results["distances"][0],
-            )
-        ):
-            # Cosine distance: 0 = identical, 2 = opposite. similarity = 1 - distance
-            similarity = max(0.0, 1.0 - dist)
-            formatted.append(
-                {
-                    "id": doc_id,
-                    "text": doc,
-                    "metadata": meta,
-                    "similarity": similarity,
-                }
-            )
-    return formatted
+    return search_with_embedding(query_embedding, k=k, filters=filters, collection=collection)
 
 
 def get_full_file(file_path: str, collection=None) -> list[dict[str, Any]]:

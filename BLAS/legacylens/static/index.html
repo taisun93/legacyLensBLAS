@@ -94,7 +94,7 @@
         append(formatResults(data.results));
         append('\n--- Answer ---\n', 'dim');
         append(data.answer, 'answer');
-        append(`\n[${data.latency.total.toFixed(2)}s]`, 'dim');
+        append(`\n[${data.timing_breakdown || '—'}]`, 'dim');
       } catch (e) {
         append('Error: ' + e.message, 'err');
       }

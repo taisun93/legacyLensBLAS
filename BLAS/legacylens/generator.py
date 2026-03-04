@@ -11,7 +11,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MODEL = "claude-sonnet-4-20250514"
-MAX_TOKENS = 400
+MAX_TOKENS = 500
+
+_client: Optional[Anthropic] = None
+
+
+def _get_client() -> Anthropic:
+    global _client
+    if _client is None:
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY not set in .env")
+        _client = Anthropic(api_key=api_key)
+    return _client
 
 # Base system prompt for BLAS expert behavior
 BASE_SYSTEM = """You are a Fortran and BLAS expert. Answer questions about the BLAS (Basic Linear Algebra Subprograms) codebase using the provided code context.
@@ -80,10 +92,6 @@ def generate_answer(
     if not chunks:
         return "No relevant code found. Try a different query."
 
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY not set in .env")
-
     # Low-confidence warning when avg similarity < 0.5
     avg_sim = sum(c.get("similarity", 0) for c in chunks) / len(chunks)
     warning = ""
@@ -100,7 +108,7 @@ Relevant BLAS code context:
 
 Answer briefly using the context above. Cite file names and line numbers. Be concise."""
 
-    client = Anthropic(api_key=api_key)
+    client = _get_client()
     response = client.messages.create(
         model=MODEL,
         max_tokens=MAX_TOKENS,

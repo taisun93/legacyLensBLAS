@@ -3,17 +3,22 @@ LegacyLens API — FastAPI wrapper for query and search.
 Run: uvicorn api:app --reload
 """
 
-import time
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from retriever import search
-from generator import generate_answer
+from query_pipeline import run_query, format_timing
+from retriever import get_collection
 
 app = FastAPI(title="LegacyLens", description="Query BLAS codebase in natural language")
+
+
+@app.on_event("startup")
+def startup():
+    """Pre-warm ChromaDB collection so first query doesn't pay load cost."""
+    get_collection()
 
 
 class QueryRequest(BaseModel):
@@ -26,6 +31,7 @@ class QueryResponse(BaseModel):
     results: list[dict]
     answer: str
     latency: dict[str, float]
+    timing_breakdown: str
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -33,16 +39,19 @@ def api_query(req: QueryRequest):
     """Run a natural language query against the BLAS codebase."""
     if not req.query.strip():
         raise HTTPException(400, "Query cannot be empty")
-    start = time.perf_counter()
-    results = search(req.query, k=req.k)
-    search_elapsed = time.perf_counter() - start
-    gen_start = time.perf_counter()
-    answer = generate_answer(req.query, results, req.feature)
-    gen_elapsed = time.perf_counter() - gen_start
+    results, answer, timing = run_query(req.query, k=req.k, feature=req.feature)
+    latency = {
+        "total_ms": timing["total_ms"],
+        "embed_ms": timing["embed_ms"],
+        "chroma_ms": timing["chroma_ms"],
+        "claude_ms": timing["claude_ms"],
+        "cache_hit": timing["cache_hit"],
+    }
     return QueryResponse(
         results=results,
         answer=answer,
-        latency={"total": search_elapsed + gen_elapsed, "search": search_elapsed, "generate": gen_elapsed},
+        latency=latency,
+        timing_breakdown=format_timing(timing),
     )
 
 
