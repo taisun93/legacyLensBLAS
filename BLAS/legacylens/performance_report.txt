@@ -1,0 +1,39 @@
+LegacyLens Performance Targets Report
+2026-03-04T21:26:06.628240
+==================================================
+
+=== 1. Ingestion Throughput ===
+Source .f/.f90/.for files: 169
+Total LOC: 48480
+Elapsed: 64.85s
+Total chunks stored: 173
+LOC/sec: 747.6
+
+=== 2. Codebase Coverage ===
+Source .f files discovered: 169
+Chunks in ChromaDB: 173
+Files with >=1 chunk: 169
+No source files with zero chunks.
+
+=== 3. Retrieval Precision ===
+Retrieval Precision (ground truth, top-5)
+==================================================
+  [PASS] 'double precision general matrix multiply' -> DGEMM (top-5: ['DGEMM', 'ZGEMM', 'ZGEMV', 'SGEMM', 'DGEMV'])
+  [PASS] 'single precision matrix vector multiply' -> SGEMV (top-5: ['SGEMV', 'SSCAL', 'STRMV', 'SSYMV', 'SSPMV'])
+  [PASS] 'double precision dot product' -> DDOT (top-5: ['DDOT', 'DSDOT', 'SDOT', '', 'SDSDOT'])
+  [PASS] 'euclidean norm of a vector' -> DNRM2 (top-5: ['DNRM2', 'SNRM2', 'SCASUM', 'DZNRM2', 'SCNRM2'])
+  [PASS] 'triangular matrix vector multiply' -> DTRMV (top-5: ['DTRMV', 'DTPMV', 'STPMV', 'DTPSV', 'STPSV'])
+  [PASS] 'triangular solve' -> DTRSV (top-5: ['DTBSV', 'DTRSV', 'ZTRSV', 'DTPSV', 'ZTBSV'])
+  [FAIL] 'rank one update outer product' -> DGER (top-5: ['DSYR2', 'SSYR2', 'CGERU', 'DSPR2', 'ZGERU'])
+  [PASS] 'symmetric matrix vector multiply' -> DSYMV (top-5: ['SSYMV', 'DSYMV', 'SSKEWSYMV', 'DSKEWSYMV', 'SSYMM'])
+  [PASS] 'scale a vector by a scalar' -> DSCAL (top-5: ['SSCAL', 'DSCAL', 'CSCAL', 'ZSCAL', 'CSSCAL'])
+  [PASS] 'copy one vector to another' -> DCOPY (top-5: ['SCOPY', 'DCOPY', 'CCOPY', 'ZCOPY', 'CAXPY'])
+  [PASS] 'add scaled vector axpy' -> DAXPY (top-5: ['DAXPY', 'SAXPY', 'SAXPBY', 'DAXPBY', 'ZAXPBY'])
+  [PASS] 'swap two vectors' -> DSWAP (top-5: ['SSWAP', 'CSWAP', 'DSWAP', 'ZSWAP', 'SROT'])
+  [PASS] 'index of maximum absolute value' -> IDAMAX (top-5: ['ISAMAX', 'IDAMAX', 'ICAMAX', 'IZAMAX', 'ICAMAX'])
+  [PASS] 'sum of absolute values' -> DASUM (top-5: ['SASUM', 'SCASUM', 'DASUM', 'SCABS1', 'DZASUM'])
+  [PASS] 'complex double precision matrix multiply' -> ZGEMM (top-5: ['ZGEMM', 'ZGERC', '', 'ZHEMM', 'ZTRMM'])
+==================================================
+Precision: 14/15 = 93.3%
+Target >=70.0%: PASS
+
